@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Base user profile for clients and artisans.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["client", "artisan", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "phoneNumber": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Artisan": {
+      "title": "Artisan",
+      "description": "Extended profile for artisans.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "companyName": { "type": "string" },
+        "specialty": { "type": "string", "enum": ["mason", "electrician", "plumber", "carpenter", "painter"] },
+        "experience": { "type": "number" },
+        "photos": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "baseRate": { "type": "number" },
+        "description": { "type": "string" },
+        "verified": { "type": "boolean" }
+      },
+      "required": ["uid", "specialty"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A construction project created by a client.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "budget": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "open", "in-progress", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "devisId": { "type": "string" }
+      },
+      "required": ["clientId", "title", "status"]
+    },
+    "Devis": {
+      "title": "Devis",
+      "description": "Automatically generated quote for a project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string", "default": "FCFA" },
+        "breakdown": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": { "type": "string" },
+              "amount": { "type": "number" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "generatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "totalAmount"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "An offer from an artisan for a project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "artisanId": { "type": "string" },
+        "amount": { "type": "number" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "artisanId", "amount", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A review from a client for an artisan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "artisanId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["artisanId", "clientId", "rating"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message in a chat between client and artisan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "fileUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["chatId", "senderId", "text"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A payment transaction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed", "escrow"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "amount", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles." },
+    "/artisans/{uid}": { "schema": "Artisan", "description": "Artisan-specific data." },
+    "/projects/{projectId}": { "schema": "Project", "description": "Construction projects." },
+    "/projects/{projectId}/devis/{devisId}": { "schema": "Devis", "description": "Quotes for a project." },
+    "/projects/{projectId}/proposals/{proposalId}": { "schema": "Proposal", "description": "Artisan offers." },
+    "/artisans/{artisanId}/reviews/{reviewId}": { "schema": "Review", "description": "Artisan reviews." },
+    "/chats/{chatId}/messages/{messageId}": { "schema": "Message", "description": "Chat messages." },
+    "/transactions/{transactionId}": { "schema": "Transaction", "description": "Payment transactions." }
+  }
+}

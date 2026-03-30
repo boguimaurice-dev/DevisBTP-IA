@@ -1,0 +1,7 @@
+{
+  "name": "DevisBTP IA Marketplace",
+  "description": "Plateforme SaaS intelligente de génération de devis BTP et marketplace de mise en relation clients-artisans.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

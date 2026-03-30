@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, role, createdAt, phoneNumber, location
+    //
+    // Collection: artisans
+    // Fields: uid, companyName, specialty, experience, photos, rating, reviewCount, baseRate, description, verified
+    //
+    // Collection: projects
+    // Fields: id, clientId, title, description, location, budget, status, createdAt, devisId
+    //
+    // Collection: chats
+    // Fields: participants (array of uids)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "boguimaurice@gmail.com" && request.auth.token.email_verified == true));
+    }
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.role in ['client', 'artisan', 'admin'] &&
+             data.email is string &&
+             data.uid == request.auth.uid;
+    }
+    function isValidArtisan(data) {
+      return data.keys().hasAll(['uid', 'specialty']) &&
+             data.specialty in ['mason', 'electrician', 'plumber', 'carpenter', 'painter'];
+    }
+    function isValidProject(data) {
+      return data.keys().hasAll(['clientId', 'title', 'status']) &&
+             data.clientId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId) && request.resource.data.role == resource.data.role;
+    }
+
+    match /artisans/{artisanId} {
+      allow read: if true; // Public profiles
+      allow create: if isAuthenticated() && isOwner(artisanId) && isValidArtisan(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(artisanId);
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isAdmin());
+      
+      match /devis/{devisId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && (get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid || isAdmin());
+      }
+      
+      match /proposals/{proposalId} {
+        allow read: if isAuthenticated() && (get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid || request.auth.uid == resource.data.artisanId);
+        allow create: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'artisan';
+        allow update: if isAuthenticated() && (request.auth.uid == resource.data.artisanId || get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
+      }
+    }
+
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated(); // Simplified for now, should check participants
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource.data.clientId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}
