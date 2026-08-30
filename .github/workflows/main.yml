@@ -1,0 +1,67 @@
+name: Automated dependency audit fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Set to "true" to run `npm audit fix --force`'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '0 2 * * 0' # weekly on Sundays at 02:00 UTC
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Save npm audit before
+        run: npm audit --json > audit-before.json || true
+
+      - name: Run npm audit fix (force optional)
+        run: |
+          set -e
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "Running: npm audit fix --force"
+            npm audit fix --force || true
+          else
+            echo "Running: npm audit fix"
+            npm audit fix || true
+          fi
+
+      - name: Run tests (if defined)
+        run: |
+          if npm run | grep -q "test"; then
+            npm test || true
+          fi
+
+      - name: Commit & create pull request with changes
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: chore(deps): npm audit fix
+          title: chore(deps): npm audit fix (automated)
+          body: |
+            This PR was created automatically by the dependency-audit workflow.
+
+            It runs `npm audit fix` (optionally `--force`) and commits updated `package.json` / `package-lock.json`.
+
+            Review the changes and run your CI to validate.
+          base: main
+          branch: fix/deps-audit/automated
